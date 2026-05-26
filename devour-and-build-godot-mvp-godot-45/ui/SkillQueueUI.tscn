@@ -1,0 +1,62 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/SkillQueueUI.gd" id="1_ui"]
+
+[node name="SkillQueueUI" type="CanvasLayer"]
+script = ExtResource("1_ui")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SlotContainer" type="HBoxContainer" parent="Root"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 1110.0
+offset_right = 360.0
+offset_bottom = 1230.0
+theme_override_constants/separation = 12
+
+[node name="Slot1" type="Button" parent="Root/SlotContainer"]
+custom_minimum_size = Vector2(104, 104)
+layout_mode = 2
+text = "1\n空"
+
+[node name="Slot2" type="Button" parent="Root/SlotContainer"]
+custom_minimum_size = Vector2(104, 104)
+layout_mode = 2
+text = "2\n空"
+
+[node name="Slot3" type="Button" parent="Root/SlotContainer"]
+custom_minimum_size = Vector2(104, 104)
+layout_mode = 2
+text = "3\n空"
+
+[node name="InfoLabel" type="Label" parent="Root"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 1056.0
+offset_right = 360.0
+offset_bottom = 1092.0
+text = "Skill Queue: 0/3"
+
+[node name="HelpLabel" type="Label" parent="Root"]
+layout_mode = 0
+offset_left = 360.0
+offset_top = 1120.0
+offset_right = 700.0
+offset_bottom = 1228.0
+horizontal_alignment = 2
+text = "Help"
+
+[node name="StateLabel" type="Label" parent="Root"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 360.0
+offset_bottom = 92.0
+text = "Level"

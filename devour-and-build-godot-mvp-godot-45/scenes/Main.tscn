@@ -1,0 +1,21 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://ui/SkillQueueUI.tscn" id="3_ui"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Player" parent="World" instance=ExtResource("2_player")]
+position = Vector2(360, 900)
+
+[node name="Camera2D" type="Camera2D" parent="World"]
+position = Vector2(360, 640)
+enabled = true
+position_smoothing_enabled = true
+position_smoothing_speed = 5.0
+
+[node name="SkillQueueUI" parent="." instance=ExtResource("3_ui")]
