@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import sys
 
-ROOT = Path('/home/ubuntu/devour_and_build_godot')
+ROOT = Path(__file__).resolve().parent
 required_files = [
     'project.godot',
     'scenes/Main.tscn',
@@ -50,6 +50,8 @@ markers = {
         'func crush_slot',
         'overcharge_requested.emit',
         'MAX_SKILL_QUEUE_SIZE',
+        '"devour": KEY_SPACE',
+        '"crush_slot_1": KEY_1',
     ],
     'scripts/Main.gd': [
         'enum LevelState',
@@ -64,6 +66,7 @@ markers = {
     'scripts/SkillQueueUI.gd': [
         'signal slot_pressed',
         'func refresh_queue',
+        '数字键 1/2/3',
     ],
 }
 for rel, needed in markers.items():

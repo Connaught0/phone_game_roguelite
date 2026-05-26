@@ -1,6 +1,6 @@
 from pathlib import Path
 
-ROOT = Path('/home/ubuntu/devour_and_build_godot')
+ROOT = Path(__file__).resolve().parent
 
 files = {
     'project.godot': r'''config_version=5
@@ -195,8 +195,6 @@ signal overcharge_requested(payload: SkillPayload, origin: Vector2, direction: V
 signal devoured_enemy(enemy: Enemy, payload: SkillPayload)
 
 const MAX_SKILL_QUEUE_SIZE: int = 3
-const DOUBLE_TAP_WINDOW: float = 0.28
-const LEFT_UI_RATIO: float = 0.33
 
 enum PlayerState { IDLE_MOVING, DEVOURING, CRUSHING }
 
@@ -215,10 +213,7 @@ var is_invincible: bool = false
 var bonus_move_speed: float = 0.0
 var bonus_attack_damage: float = 0.0
 
-var _drag_active: bool = false
 var _movement_input: Vector2 = Vector2.ZERO
-var _last_drag_position: Vector2 = Vector2.ZERO
-var _last_tap_time: float = -10.0
 var _last_move_direction: Vector2 = Vector2.UP
 var _auto_attack_timer: float = 0.0
 
@@ -234,19 +229,23 @@ func _ready() -> void:
 	_update_status_label()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
-		_handle_screen_touch(event)
-	elif event is InputEventScreenDrag:
-		_handle_screen_drag(event)
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_handle_mouse_button(event)
-	elif event is InputEventMouseMotion:
-		_handle_mouse_motion(event)
+	if event.is_action_pressed("devour"):
+		try_devour_nearest()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("crush_slot_1"):
+		crush_slot(0)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("crush_slot_2"):
+		crush_slot(1)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("crush_slot_3"):
+		crush_slot(2)
+		get_viewport().set_input_as_handled()
 
 func _physics_process(delta: float) -> void:
 	var keyboard_input: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	_movement_input = keyboard_input
 	if keyboard_input != Vector2.ZERO:
-		_movement_input = keyboard_input
 		_last_move_direction = keyboard_input.normalized()
 
 	if state == PlayerState.DEVOURING:
@@ -285,52 +284,6 @@ func try_devour_nearest() -> void:
 		print("Devour failed: no devourable enemy in radius")
 		return
 	_perform_devour(target)
-
-func _handle_screen_touch(event: InputEventScreenTouch) -> void:
-	if _is_left_ui_zone(event.position):
-		return
-	if event.pressed:
-		_drag_active = true
-		_last_drag_position = event.position
-		_handle_tap_candidate()
-	else:
-		_drag_active = false
-		_movement_input = Vector2.ZERO
-
-func _handle_screen_drag(event: InputEventScreenDrag) -> void:
-	if not _drag_active or _is_left_ui_zone(event.position):
-		return
-	_movement_input = event.relative.limit_length(64.0) / 64.0
-	_last_drag_position = event.position
-
-func _handle_mouse_button(event: InputEventMouseButton) -> void:
-	if _is_left_ui_zone(event.position):
-		return
-	if event.pressed:
-		_drag_active = true
-		_last_drag_position = event.position
-		_handle_tap_candidate()
-	else:
-		_drag_active = false
-		_movement_input = Vector2.ZERO
-
-func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
-	if not _drag_active or _is_left_ui_zone(event.position):
-		return
-	_movement_input = event.relative.limit_length(64.0) / 64.0
-	_last_drag_position = event.position
-
-func _handle_tap_candidate() -> void:
-	var now: float = Time.get_ticks_msec() / 1000.0
-	if now - _last_tap_time <= DOUBLE_TAP_WINDOW:
-		try_devour_nearest()
-		_last_tap_time = -10.0
-	else:
-		_last_tap_time = now
-
-func _is_left_ui_zone(screen_position: Vector2) -> bool:
-	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-	return screen_position.x <= viewport_size.x * LEFT_UI_RATIO
 
 func _perform_devour(target: Enemy) -> void:
 	state = PlayerState.DEVOURING
@@ -449,6 +402,10 @@ func _ensure_desktop_input_actions() -> void:
 		"move_right": KEY_D,
 		"move_up": KEY_W,
 		"move_down": KEY_S,
+		"devour": KEY_SPACE,
+		"crush_slot_1": KEY_1,
+		"crush_slot_2": KEY_2,
+		"crush_slot_3": KEY_3,
 	}
 	for action_name: String in bindings.keys():
 		if not InputMap.has_action(action_name):
@@ -474,8 +431,8 @@ func _ready() -> void:
 			slot_pressed.emit(index)
 		)
 	refresh_queue([])
-	help_label.text = "右侧拖拽移动 / 快速双击吞噬
-左下点击槽位粉碎技能"
+	help_label.text = "WASD 移动 / 空格吞噬
+数字键 1/2/3 粉碎技能槽"
 
 func refresh_queue(queue: Array) -> void:
 	for i in range(slots.size()):
@@ -800,7 +757,7 @@ position_smoothing_speed = 5.0
 
     'README.md': r'''# Devour & Build Godot MVP
 
-本项目是《Devour & Build（吞噬与构筑）》核心战斗循环的 **Godot 4 白盒 MVP**。当前实现目标不是美术成品，而是验证核心闭环：**拖拽移动、自动索敌攻击、双击吞噬、三格技能队列、满载吐星星、点击槽位粉碎、锁屏战状态机**。
+本项目是《Devour & Build（吞噬与构筑）》核心战斗循环的 **Godot 4 白盒 MVP**。当前实现目标不是美术成品，而是验证核心闭环：**WASD 移动、自动索敌攻击、空格吞噬、三格技能队列、满载吐星星、数字键粉碎、锁屏战状态机**。
 
 ## 运行环境
 
@@ -816,7 +773,7 @@ position_smoothing_speed = 5.0
 
 ## 操作方式
 
-在移动端或 Godot 远程调试中，屏幕中/右侧拖拽会驱动玩家移动，快速双击会在索敌半径内吞噬最近敌人。左下角 1 至 3 号槽位用于粉碎技能。为了便于桌面调试，项目也提供了 **WASD 移动** 与 **鼠标左键拖拽/双击** 的输入兼容。
+当前版本采用 **PC 原型版操作**。玩家使用 **WASD** 移动，靠近敌人后会自动索敌攻击；当敌人进入可吞噬状态后，按 **空格键** 吞噬最近的可吞噬敌人；技能队列中的 1 至 3 号槽位可用 **数字键 1/2/3** 粉碎并获得对应 Buff。UI 槽位仍保留鼠标点击，便于调试。
 
 ## 当前已实现的 GDD 对照
 
@@ -824,16 +781,16 @@ position_smoothing_speed = 5.0
 | --- | --- | --- |
 | 玩家基础属性与状态机 | 已实现 `IDLE_MOVING / DEVOURING / CRUSHING` | `scripts/Player.gd` |
 | 敌人标签与技能载荷 | 已实现 `ElementTag / ActionType / CrushReward` | `scripts/Enemy.gd`, `scripts/SkillPayload.gd` |
-| 拖拽移动 | 已实现触屏与鼠标拖拽 | `scripts/Player.gd` |
-| 双击吞噬 | 已实现最近目标检测、冲刺、销毁与结算 | `scripts/Player.gd` |
-| UI 技能队列 | 已实现 3 槽队列与点击粉碎 | `ui/SkillQueueUI.tscn`, `scripts/SkillQueueUI.gd` |
+| PC 键盘移动 | 已实现 WASD 移动，松键后停止 | `scripts/Player.gd` |
+| 空格吞噬 | 已实现最近目标检测、冲刺、销毁与结算 | `scripts/Player.gd` |
+| UI 技能队列 | 已实现 3 槽队列、数字键粉碎与点击粉碎 | `ui/SkillQueueUI.tscn`, `scripts/SkillQueueUI.gd` |
 | 自动攻击 | 已实现定时索敌、元素叠加、伤害打印 | `scripts/Player.gd` |
 | 满载吐星星 | 已实现贯穿投射物与元素伤害 | `scripts/OverchargeProjectile.gd` |
 | 关卡推进/锁屏战 | 已实现推进、触发锁屏、刷两排怪、清场解锁 | `scripts/Main.gd` |
 
 ## 建议测试路径
 
-运行后先用 WASD 或右侧拖拽靠近走廊敌人，观察控制台中的 `Auto attack` 日志。随后快速双击吞噬敌人，左下 UI 会加入元素技能。队列满 3 格后继续吞噬敌人，会触发高速贯穿投射物，即当前的“吐星星”机制。移动到更靠上的区域后会进入 `ARENA_LOCK`，场景刷出两排敌人，清空后恢复推进状态。
+运行后先用 WASD 靠近走廊敌人，观察控制台中的 `Auto attack` 日志。敌人被打到可吞噬状态后，按空格键吞噬最近的可吞噬敌人，左下 UI 会加入元素技能。按数字键 1/2/3 可以粉碎对应技能槽；队列满 3 格后继续按空格吞噬敌人，会触发高速贯穿投射物，即当前的“吐星星”机制。移动到更靠上的区域后会进入 `ARENA_LOCK`，场景刷出两排敌人，清空后恢复推进状态。
 
 ## 下一步建议
 
@@ -848,7 +805,7 @@ position_smoothing_speed = 5.0
 
 | 模块 | 职责 | 输入 | 输出 |
 | --- | --- | --- | --- |
-| `Player` | 处理输入、移动、索敌、自动攻击、吞噬结算与粉碎 Buff | 触屏/鼠标/WASD、敌人列表、UI 槽位点击 | 技能队列变化、满载投射物请求、敌人伤害 |
+| `Player` | 处理输入、移动、索敌、自动攻击、吞噬结算与粉碎 Buff | WASD、空格键、数字键 1/2/3、敌人列表、UI 槽位点击 | 技能队列变化、满载投射物请求、敌人伤害 |
 | `Enemy` | 提供敌人基础面板与载荷数据，响应伤害和吞噬 | 伤害、吞噬请求 | 死亡信号、技能载荷 |
 | `SkillPayload` | 表示被吞噬后进入队列的技能数据 | 敌人标签 | 元素、粉碎收益 |
 | `SkillQueueUI` | 展示 3 格技能队列并发出粉碎槽位请求 | 队列刷新 | 槽位点击信号 |
@@ -857,7 +814,7 @@ position_smoothing_speed = 5.0
 
 ## 玩家状态机
 
-`Player.gd` 中使用 `PlayerState` 枚举表达三个状态。`IDLE_MOVING` 是默认状态，可移动且可自动攻击；`DEVOURING` 由双击吞噬触发，期间玩家冲刺至目标并开启短暂无敌；`CRUSHING` 由 UI 粉碎触发，用于承载短暂 Buff 动画或表现窗口。
+`Player.gd` 中使用 `PlayerState` 枚举表达三个状态。`IDLE_MOVING` 是默认状态，可通过 WASD 移动且可自动攻击；`DEVOURING` 由空格键吞噬触发，期间玩家冲刺至目标并开启短暂无敌；`CRUSHING` 由数字键 1/2/3 或 UI 槽位点击触发，用于承载短暂 Buff 动画或表现窗口。
 
 ## 技能队列规则
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-root = Path('/home/ubuntu/devour_and_build_godot')
+root = Path(__file__).resolve().parent
 template_path = root / 'create_project_files.py'
 template = template_path.read_text(encoding='utf-8')
 script_keys = [

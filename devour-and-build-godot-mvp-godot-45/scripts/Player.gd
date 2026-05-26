@@ -6,8 +6,6 @@ signal overcharge_requested(payload: SkillPayload, origin: Vector2, direction: V
 signal devoured_enemy(enemy: Enemy, payload: SkillPayload)
 
 const MAX_SKILL_QUEUE_SIZE: int = 3
-const DOUBLE_TAP_WINDOW: float = 0.28
-const LEFT_UI_RATIO: float = 0.33
 
 enum PlayerState { IDLE_MOVING, DEVOURING, CRUSHING }
 
@@ -26,10 +24,7 @@ var is_invincible: bool = false
 var bonus_move_speed: float = 0.0
 var bonus_attack_damage: float = 0.0
 
-var _drag_active: bool = false
 var _movement_input: Vector2 = Vector2.ZERO
-var _last_drag_position: Vector2 = Vector2.ZERO
-var _last_tap_time: float = -10.0
 var _last_move_direction: Vector2 = Vector2.UP
 var _auto_attack_timer: float = 0.0
 
@@ -45,19 +40,23 @@ func _ready() -> void:
 	_update_status_label()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
-		_handle_screen_touch(event)
-	elif event is InputEventScreenDrag:
-		_handle_screen_drag(event)
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_handle_mouse_button(event)
-	elif event is InputEventMouseMotion:
-		_handle_mouse_motion(event)
+	if event.is_action_pressed("devour"):
+		try_devour_nearest()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("crush_slot_1"):
+		crush_slot(0)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("crush_slot_2"):
+		crush_slot(1)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("crush_slot_3"):
+		crush_slot(2)
+		get_viewport().set_input_as_handled()
 
 func _physics_process(delta: float) -> void:
 	var keyboard_input: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	_movement_input = keyboard_input
 	if keyboard_input != Vector2.ZERO:
-		_movement_input = keyboard_input
 		_last_move_direction = keyboard_input.normalized()
 
 	if state == PlayerState.DEVOURING:
@@ -96,52 +95,6 @@ func try_devour_nearest() -> void:
 		print("Devour failed: no devourable enemy in radius")
 		return
 	_perform_devour(target)
-
-func _handle_screen_touch(event: InputEventScreenTouch) -> void:
-	if _is_left_ui_zone(event.position):
-		return
-	if event.pressed:
-		_drag_active = true
-		_last_drag_position = event.position
-		_handle_tap_candidate()
-	else:
-		_drag_active = false
-		_movement_input = Vector2.ZERO
-
-func _handle_screen_drag(event: InputEventScreenDrag) -> void:
-	if not _drag_active or _is_left_ui_zone(event.position):
-		return
-	_movement_input = event.relative.limit_length(64.0) / 64.0
-	_last_drag_position = event.position
-
-func _handle_mouse_button(event: InputEventMouseButton) -> void:
-	if _is_left_ui_zone(event.position):
-		return
-	if event.pressed:
-		_drag_active = true
-		_last_drag_position = event.position
-		_handle_tap_candidate()
-	else:
-		_drag_active = false
-		_movement_input = Vector2.ZERO
-
-func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
-	if not _drag_active or _is_left_ui_zone(event.position):
-		return
-	_movement_input = event.relative.limit_length(64.0) / 64.0
-	_last_drag_position = event.position
-
-func _handle_tap_candidate() -> void:
-	var now: float = Time.get_ticks_msec() / 1000.0
-	if now - _last_tap_time <= DOUBLE_TAP_WINDOW:
-		try_devour_nearest()
-		_last_tap_time = -10.0
-	else:
-		_last_tap_time = now
-
-func _is_left_ui_zone(screen_position: Vector2) -> bool:
-	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-	return screen_position.x <= viewport_size.x * LEFT_UI_RATIO
 
 func _perform_devour(target: Enemy) -> void:
 	state = PlayerState.DEVOURING
@@ -258,6 +211,10 @@ func _ensure_desktop_input_actions() -> void:
 		"move_right": KEY_D,
 		"move_up": KEY_W,
 		"move_down": KEY_S,
+		"devour": KEY_SPACE,
+		"crush_slot_1": KEY_1,
+		"crush_slot_2": KEY_2,
+		"crush_slot_3": KEY_3,
 	}
 	for action_name: String in bindings.keys():
 		if not InputMap.has_action(action_name):

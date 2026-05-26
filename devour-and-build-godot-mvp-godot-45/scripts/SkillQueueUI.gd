@@ -13,7 +13,7 @@ func _ready() -> void:
 			slot_pressed.emit(index)
 		)
 	refresh_queue([])
-	help_label.text = "右侧拖拽移动 / 快速双击吞噬\n左下点击槽位粉碎技能"
+	help_label.text = "WASD 移动 / 空格吞噬\n数字键 1/2/3 粉碎技能槽"
 
 func refresh_queue(queue: Array) -> void:
 	for i in range(slots.size()):
